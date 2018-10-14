@@ -1,0 +1,57 @@
+; triangle1.kn
+;    from racket recursion video 1/6 --- triangle recursion, Danny Heap
+;https://www.youtube.com/watch?v=gZAXE1GWSF0&index=1&list=PL72F39BBF348D4515
+
+class Size()
+	+var width: float
+	+var height: float
+end class
+
+func getSize(i: int): @Size
+	var size: @Size
+	if(i = 0)
+		do size :: #@Size
+		do size.width :: 10.0
+		do size.height :: size.width * 0.5 * lib@sqrt(3.0)
+	else
+		do size :: @getSize(i - 1)
+		do size.width :* 2.0
+		do size.height :* 2.0
+	end if
+	ret size
+end func
+
+func drawSerp0(draw: wnd@Draw, x: float, y: float)
+	var size: @Size :: @getSize(0)
+	do draw@tri(
+	|x + 0.5 * size.width, y,
+	|x, y + size.height,
+	|x + size.width, y + size.height,
+	|0xFF00FF00)
+end func
+
+func drawSerp(draw: wnd@Draw, i: int, x: float, y: float)
+	if(i = 0)
+		do @drawSerp0(draw, x, y)
+	else
+		var size: @Size :: @getSize(i)
+		do @drawSerp(draw, i - 1, x + 0.25 * size.width, y)
+		do @drawSerp(draw, i - 1, x, y + 0.5 * size.height)
+		do @drawSerp(draw, i - 1, x + 0.5 * size.width, y + 0.5 * size.height)
+	end if
+end func
+
+func main()
+	var wnd: wnd@Wnd :: wnd@makeWnd(
+	|null, %normal, 800, 600, "Triangle Recursion")
+	var draw: wnd@Draw :: wnd@makeDraw(
+	|wnd, 0, 0, 3000, 2000, %fix, %fix, false)
+	
+	do wnd@act()
+	do draw@rect(0.0, 0.0, 3000.0, 2000.0, 0xFFFFFFFF)
+	do @drawSerp(draw, 6, 0.0, 0.0)
+	do draw@render(0)
+	
+	while(wnd@act())
+	end while
+end func
