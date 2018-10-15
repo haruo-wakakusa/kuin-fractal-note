@@ -1,0 +1,61 @@
+; koch1.kn
+;    from racket recursion video 2/6 --- koch curve, Danny Heap
+;https://www.youtube.com/watch?v=6oFa75y4Znk
+
+; Racket言語においては平行移動、回転のできる図形オブジェクトを
+; 連結させることによってコッホ曲線を描画しているが、
+; Kuinではそのようなライブラリが完備されていないので
+; 以下の方法を取る。
+
+; ある線分を分割することを考える。コッホ曲線は、線分を３分割し、
+; 真ん中の区域については正三角形のその他の２辺を割り当てている。
+; 従って、それを再帰的に行うような関数を定義する。
+
+const LINE_LENGTH: float :: 1000.0
+
+; drawKoch関数：コッホ曲線を描画する
+;    [引数]
+;    n: 再帰数
+;    sx: 始端のX座標
+;    sy: 始端のY座標
+;    ex: 終端のX座標
+;    ey: 終端のY座標
+
+func drawKoch(n: int, sx: float, sy: float, ex: float, ey: float)
+	if(n = 0)
+		do draw@line(sx, sy, ex, ey, 0xFF000000)
+	else
+		var vx: float :: (ex - sx) / 3.0
+		var vy: float :: (ey - sy) / 3.0
+		var x1: float :: sx + vx
+		var y1: float :: sy + vy
+		var x2: float :: x1 + vx * 0.5 + vy * 0.5 * lib@sqrt(3.0)
+		var y2: float :: y1 - vx * 0.5 * lib@sqrt(3.0) + vy * 0.5
+		var x3: float :: sx + 2.0 * vx
+		var y3: float :: sy + 2.0 * vy
+		do @drawKoch(n - 1, sx, sy, x1, y1)
+		do @drawKoch(n - 1, x1, y1, x2, y2)
+		do @drawKoch(n - 1, x2, y2, x3, y3)
+		do @drawKoch(n - 1, x3, y3, ex, ey)
+	end if
+end func
+
+func main()
+	var wnd: wnd@Wnd :: wnd@makeWnd(
+	|null, %fix, @LINE_LENGTH $ int, (0.38 * @LINE_LENGTH) $ int,
+	|"Koch Curve")
+	var draw: wnd@Draw :: wnd@makeDraw(
+	|wnd, 0, 0, @LINE_LENGTH $ int, (0.38 * @LINE_LENGTH) $ int,
+	|%fix, %fix, true)
+	
+	do wnd@act()
+	do draw@rect(0.0, 0.0, 3000.0, 2000.0, 0xFFFFFFFF)
+	do @drawKoch(
+	|6,
+	|0.0, @LINE_LENGTH * 0.34,
+	|@LINE_LENGTH, @LINE_LENGTH * 0.34)
+	do draw@render(0)
+	
+	while(wnd@act())
+	end while
+end func
