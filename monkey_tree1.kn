@@ -3,6 +3,8 @@
 
 const WINDOW_WIDTH: float :: 800.0
 const WINDOW_HEIGHT: float :: 300.0
+const DOT_RADIUS1: float :: 3.0
+const DOT_RADIUS2: float :: 5.0
 
 class Point()
 	+var x: float
@@ -34,8 +36,12 @@ func pt(x: float, y: float): @Point
 	ret res
 end func
 
-func top(left: @Point, right: @Point): @Point
+func top1(left: @Point, right: @Point): @Point
 	ret left.add(right.sub(left).rotate(lib@pi / 3.0))
+end func
+
+func top2(left: @Point, right: @Point): @Point
+	ret left.add(right.sub(left).rotate(-lib@pi / 3.0))
 end func
 
 func div12(p1: @Point, p2: @Point): @Point
@@ -44,8 +50,7 @@ end func
 
 ; ジェネレータの作成
 
-func getGenerator1(left: @Point, right: @Point): []@Point
-	var top: @Point :: @top(left, right)
+func getGenerator1(left: @Point, right: @Point, top: @Point): []@Point
 	var ptl: @Point :: @div12(top, left)
 	var ptr: @Point :: @div12(top, right)
 	var prt: @Point :: @div12(right, top)
@@ -56,6 +61,33 @@ func getGenerator1(left: @Point, right: @Point): []@Point
 	|@div12(prt, ptl), @div12(ptl, prt), @div12(ptl, plr),
 	|@div12(plr, ptl), plr, @div12(right, left), right]
 	ret ary
+end func
+
+func getGenerator1b(left: @Point, right: @Point, top: @Point): []@Point
+	var gen1: []@Point :: @getGenerator1(right, left, top)
+	do gen1.reverse()
+	ret gen1
+end func
+
+func getGenerator2(left: @Point, right: @Point): []@Point
+	var top: @Point :: @top1(left, right)
+	var gen1: []@Point :: @getGenerator1(left, right, top)
+	var ary: []@Point
+	|:: @getGenerator1(gen1[0], gen1[1], @top2(gen1[0], gen1[1]))
+	|~@getGenerator1b(gen1[1], gen1[2], @top1(gen1[1], gen1[2])).sub(1, -1)
+	|~@getGenerator1(gen1[2], gen1[3], @top1(gen1[2], gen1[3])).sub(1, -1)
+	|~@getGenerator1b(gen1[3], gen1[4], @top1(gen1[3], gen1[4])).sub(1, -1)
+	|{gen1[4]は波の先端}
+	|~@getGenerator1b(gen1[4], gen1[5], @top1(gen1[4], gen1[5])).sub(1, -1)
+	|~@getGenerator1(gen1[5], gen1[6], @top2(gen1[5], gen1[6])).sub(1, -1)
+	|{gen1[6]は内側の頭頂部}
+	|~@getGenerator1b(gen1[6], gen1[7], @top2(gen1[6], gen1[7])).sub(1, -1)
+	|~@getGenerator1b(gen1[7], gen1[8], @top2(gen1[7], gen1[8])).sub(1, -1)
+	|~@getGenerator1(gen1[8], gen1[9], @top1(gen1[8], gen1[9])).sub(1, -1)
+	|~@getGenerator1b(gen1[9], gen1[10], @top2(gen1[9], gen1[10])).sub(1, -1)
+	|~@getGenerator1(gen1[10], gen1[11], @top1(gen1[10], gen1[11])).sub(1, -1)
+	ret ary
+	
 end func
 
 ; メインコード
@@ -73,12 +105,28 @@ func main()
 	
 	var left1: @Point :: @pt(50.0, 220.0)
 	var right1: @Point :: @pt(320.0, 220.0)
-	var top1: @Point :: @top(left1, right1)
+	var top1: @Point :: @top1(left1, right1)
 	var gen1: []@Point
-	|:: @getGenerator1(left1, right1)
+	|:: @getGenerator1(left1, right1, top1)
+	
+	var left2: @Point :: @pt(370.0, 220.0)
+	var right2: @Point :: @pt(left2.x + (right1.x - left1.x), 220.0)
+	var top2: @Point :: @top1(left2, right2)
+	var gen2: []@Point
+	|:: @getGenerator2(left2, right2)
+	var gen21: []@Point
+	|:: @getGenerator1(left2, right2, top2)
+	
+	var fontNormal: draw@Font :: draw@makeFont(
+	|null, 16, false, false, true, 0.0)
+	var fontItalic: draw@Font :: draw@makeFont(
+	|null, 16, false, true, true, 0.0)
 	
 	while(wnd@act())
+		; 背景の描画
 		do draw@rect(0.0, 0.0, @WINDOW_WIDTH, @WINDOW_HEIGHT, 0xFFFFFFFF)
+		
+		; ジェネレータ図形（左／粗）の描画
 		do draw@line(left1.x, left1.y, top1.x, top1.y, 0xFFCCCCFF)
 		do draw@line(right1.x, right1.y, top1.x, top1.y, 0xFFCCCCFF)
 		do draw@line(left1.x, left1.y, right1.x, right1.y, 0xFFCCCCFF)
@@ -86,7 +134,37 @@ func main()
 			do draw@line(
 			|gen1[i].x, gen1[i].y, gen1[i + 1].x, gen1[i + 1].y, 0xFF000000)
 		end for
+		do draw@circle(gen1[0].x, gen1[0].y,
+		|@DOT_RADIUS2, @DOT_RADIUS2, 0xFF000000)
+		for i(1, ^gen1 - 2)
+			do draw@circle(gen1[i].x, gen1[i].y,
+			|@DOT_RADIUS1, @DOT_RADIUS1, 0xFF000000)
+		end for
+		do draw@circle(gen1[^gen1 - 1].x, gen1[^gen1 - 1].y,
+		|@DOT_RADIUS2, @DOT_RADIUS2, 0xFF000000)
 		
+		; ジェネレータ図形（右／細）の描画
+		do draw@line(left2.x, left2.y, top2.x, top2.y, 0xFFCCCCFF)
+		do draw@line(right2.x, right2.y, top2.x, top2.y, 0xFFCCCCFF)
+		do draw@line(left2.x, left2.y, right2.x, right2.y, 0xFFCCCCFF)
+		for i(0, ^gen2 - 2)
+			do draw@line(
+			|gen2[i].x, gen2[i].y, gen2[i + 1].x, gen2[i + 1].y, 0xFF000000)
+		end for
+		do draw@circle(gen21[0].x, gen21[0].y,
+		|@DOT_RADIUS2, @DOT_RADIUS2, 0xFF000000)
+		for i(1, ^gen21 - 2)
+			do draw@circle(gen21[i].x, gen21[i].y,
+			|@DOT_RADIUS1, @DOT_RADIUS1, 0xFF000000)
+		end for
+		do draw@circle(gen21[^gen21 - 1].x, gen21[^gen21 - 1].y,
+		|@DOT_RADIUS2, @DOT_RADIUS2, 0xFF000000)
+		
+		; ハウスドルフ次元の描画
+		do fontItalic.draw(630.0, 250.0, "D", 0xFF000000)
+		do fontNormal.draw(655.0, 250.0, "= 1.8687", 0xFF000000)
+		
+		; レンダリング
 		do draw@render(60)
 	end while
 end func
