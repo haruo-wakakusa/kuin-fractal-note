@@ -1,0 +1,206 @@
+; monkey_tree1.kn
+;    フラクタル幾何学(マンデルブロ), p. 31
+
+const WINDOW_WIDTH: float :: 600.0
+const WINDOW_HEIGHT: float :: 800.0
+
+class Point()
+	+var x: float
+	+var y: float
+	
+	+func rotate(rad: float): @Point
+		var x: float :: lib@cos(rad) * me.x + lib@sin(rad) * me.y
+		var y: float :: -lib@sin(rad) * me.x + lib@cos(rad) * me.y
+		ret @pt(x, y)
+	end func
+	
+	+func add(p: @Point): @Point
+		ret @pt(me.x + p.x, me.y + p.y)
+	end func
+	
+	+func sub(p: @Point): @Point
+		ret @pt(me.x - p.x, me.y - p.y)
+	end func
+	
+	+func scale(k: float): @Point
+		ret @pt(k * me.x, k * me.y)
+	end func
+end class
+
+func pt(x: float, y: float): @Point
+	var res: @Point :: #@Point
+	do res.x :: x
+	do res.y :: y
+	ret res
+end func
+
+func top1(left: @Point, right: @Point): @Point
+	ret left.add(right.sub(left).rotate(lib@pi / 3.0))
+end func
+
+func top2(left: @Point, right: @Point): @Point
+	ret left.add(right.sub(left).rotate(-lib@pi / 3.0))
+end func
+
+func div12(p1: @Point, p2: @Point): @Point
+	ret p1.add(p2.sub(p1).scale(1.0 / 3.0))
+end func
+
+; ジェネレータの作成
+
+enum Direction
+	forwardClockwise
+	forwardCounterclockwise
+	backwardClockwise
+	backwardCounterclockwise
+end enum
+
+func getGeneratorTemplate(left: @Point, right: @Point, top: @Point): []@Point
+	var ptl: @Point :: @div12(top, left)
+	var ptr: @Point :: @div12(top, right)
+	var prt: @Point :: @div12(right, top)
+	var plr: @Point :: @div12(left, right)
+	
+	var ary: []@Point :: [
+	|left, @div12(left, top), ptl, ptr, prt,
+	|@div12(prt, ptl), @div12(ptl, prt), @div12(ptl, plr),
+	|@div12(plr, ptl), plr, @div12(right, left), right]
+	ret ary
+end func
+
+func getGeneratorTemplateB(left: @Point, right: @Point, top: @Point): []@Point
+	var gen1: []@Point :: @getGeneratorTemplate(right, left, top)
+	do gen1.reverse()
+	ret gen1
+end func
+
+func getGenerator(left: @Point, right: @Point, dir: @Direction): []@Point
+	if(dir = %forwardClockwise)
+		ret @getGeneratorTemplate(left, right, @top1(left, right))
+	elif(dir = %forwardCounterclockwise)
+		ret @getGeneratorTemplate(left, right, @top2(left, right))
+	elif(dir = %backwardClockwise)
+		ret @getGeneratorTemplateB(left, right, @top2(left, right))
+	end if
+	ret @getGeneratorTemplateB(left, right, @top1(left, right))
+end func
+
+func getDirectionArray(dir: @Direction): []@Direction
+	if(dir = %forwardClockwise)
+		ret[
+		|%forwardCounterclockwise $ @Direction,
+		|%backwardCounterclockwise,
+		|%forwardClockwise,
+		|%backwardCounterclockwise,
+		|%backwardCounterclockwise,
+		|%forwardCounterclockwise,
+		|%backwardClockwise,
+		|%backwardClockwise,
+		|%forwardClockwise,
+		|%backwardClockwise,
+		|%forwardClockwise]
+	elif(dir = %forwardCounterclockwise)
+		ret[
+		|%forwardClockwise $ @Direction,
+		|%backwardClockwise,
+		|%forwardCounterclockwise,
+		|%backwardClockwise,
+		|%backwardClockwise,
+		|%forwardClockwise,
+		|%backwardCounterclockwise,
+		|%backwardCounterclockwise,
+		|%forwardCounterclockwise,
+		|%backwardCounterclockwise,
+		|%forwardCounterclockwise]
+	elif(dir = %backwardCounterclockwise)
+		ret[
+		|%backwardCounterclockwise $ @Direction,
+		|%forwardCounterclockwise,
+		|%backwardCounterclockwise,
+		|%forwardCounterclockwise,
+		|%forwardCounterclockwise,
+		|%backwardClockwise,
+		|%forwardClockwise,
+		|%forwardClockwise,
+		|%backwardCounterclockwise,
+		|%forwardClockwise,
+		|%backwardClockwise]
+	else {dir = %backwardClockwise}
+		ret[
+		|%backwardClockwise $ @Direction,
+		|%forwardClockwise,
+		|%backwardClockwise,
+		|%forwardClockwise,
+		|%forwardClockwise,
+		|%backwardCounterclockwise,
+		|%forwardCounterclockwise,
+		|%forwardCounterclockwise,
+		|%backwardClockwise,
+		|%forwardCounterclockwise,
+		|%backwardCounterclockwise]
+	end if
+end func
+
+func getGraph(n: int, left: @Point, right: @Point, dir: @Direction): []@Point
+	if(n = 0)
+		ret @getGenerator(left, right, dir)
+	end if
+	var gen: []@Point :: @getGenerator(left, right, dir)
+	var dirary: []@Direction :: @getDirectionArray(dir)
+	var res: []@Point :: [left]
+	for i(0, ^gen - 2)
+		do res ::
+		|res ~ @getGraph(n - 1, gen[i], gen[i + 1], dirary[i]).sub(1, -1)
+	end for
+	ret res
+end func
+
+; 図形の描画関数
+
+func drawFrameModel(pts: []@Point)
+	for i(0, ^pts - 2)
+		do draw@line(
+		|pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, 0xFF000000)
+	end for
+end func
+
+func drawSpaceFillingModel(pts: []@Point)
+	var pts2: []@Point
+	|:: pts ~ [@pt(600.0, 800.0), @pt(0.0, 800.0), pts[0]]
+	var xs: []float :: #[^pts2]float
+	var ys: []float :: #[^pts2]float
+	for i(0, ^pts2 - 1)
+		do xs[i] :: pts2[i].x
+		do ys[i] :: pts2[i].y
+	end for
+	do draw@poly(xs, ys, [0xFF0000FF].repeat(^pts2))
+end func
+
+; メインコード
+
+var wndMain: wnd@Wnd
+var drawMain: wnd@Draw
+
+func main()
+	do @wndMain :: wnd@makeWnd(
+	|null, %fix, @WINDOW_WIDTH $ int, @WINDOW_HEIGHT $ int,
+	|"猿の木(直線)")
+	do @drawMain :: wnd@makeDraw(@wndMain,
+	|0, 0, @WINDOW_WIDTH $ int, @WINDOW_HEIGHT $ int,
+	|%scale, %scale, false)
+	
+	var left0: @Point :: @pt(0.0, 550.0)
+	var right0: @Point :: @pt(600.0, 550.0)
+	var gen: []@Point :: @getGraph(2, left0, right0, %forwardClockwise)
+	
+	while(wnd@act())
+		; 背景の描画
+		do draw@rect(0.0, 0.0, @WINDOW_WIDTH, @WINDOW_HEIGHT, 0xFFFFFFFF)
+		
+		;do @drawSpaceFillingModel(gen)
+		do @drawFrameModel(gen)
+		
+		; レンダリング
+		do draw@render(60)
+	end while
+end func
