@@ -1,4 +1,4 @@
-; monkey_tree2.kn
+; monkey_tree3.kn
 ;    フラクタル幾何学(マンデルブロ), p. 31
 
 const WINDOW_WIDTH: float :: 600.0
@@ -180,6 +180,7 @@ end func
 
 var wndMain: wnd@Wnd
 var drawMain: wnd@Draw
+var shape: draw2d@GeometryPath
 
 func main()
 	do @wndMain :: wnd@makeWnd(
@@ -191,16 +192,24 @@ func main()
 	
 	var left0: @Point :: @pt(0.0, 550.0)
 	var right0: @Point :: @pt(600.0, 550.0)
-	var gen: []@Point :: @getGraph(2, left0, right0, %forwardClockwise)
+	var gen: []@Point :: @getGraph(3, left0, right0, %forwardClockwise)
+	
+	do @shape :: draw2d@makeGeometryPath()
+	do @shape.open()
+	do @shape.openFigure(left0.x, left0.y, true)
+	for i(1, ^gen - 1)
+		do @shape.addLine(gen[i].x, gen[i].y)
+	end for
+	do @shape.addLine(600.0, 850.0)
+	do @shape.addLine(0.0, 850.0)
+	do @shape.addLine(left0.x, left0.y)
+	do @shape.closeFigure(true)
+	do @shape.close()
+	
+	do draw@rect(0.0, 0.0, @WINDOW_WIDTH, @WINDOW_HEIGHT, 0xFFFFFFFF)
+	do @shape.draw(0xFF0000FF)
+	do draw@render(0)
 	
 	while(wnd@act())
-		; 背景の描画
-		do draw@rect(0.0, 0.0, @WINDOW_WIDTH, @WINDOW_HEIGHT, 0xFFFFFFFF)
-		
-		;do @drawSpaceFillingModel(gen)
-		do @drawFrameModel(gen)
-		
-		; レンダリング
-		do draw@render(60)
 	end while
 end func
